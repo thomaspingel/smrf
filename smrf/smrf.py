@@ -11,7 +11,7 @@ from scipy.sparse.linalg import lsqr
 from skimage.morphology import disk
 from skimage.morphology.grey import opening
 
-def smrf(x,y,z,cellsize=1,windows=18,slope_threshold=.15,elevation_threshold=.5,
+def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
          elevation_scaler=1.25,low_filter_slope=5,low_outlier_fill=False):
     """
     Simple Example:
