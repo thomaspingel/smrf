@@ -20,6 +20,7 @@ Final classification of points is done using elevation_threshold and elevation_s
 points are compared against the provisional surface with a threshold modulated by the 
 scaler value.  However, often the provisional surface (itself interpolated) works
 quite well.  
+
 Two additional parameters are being test to assist in low outlier removal.
 low_filter_slope provides a slope value for an inverted surface.  Its default
 value is 5 (meaning 500% slope).  However, we have noticed that in very rugged 
@@ -29,13 +30,11 @@ value to avoid its use entirely.  A second parameter (low_outlier_fill) will
 remove the points from the provisional DTM, and then fill them in before the main
 body of the SMRF algorithm proceeds.  This should aid in preventing the "damage"
 to the DTM that can happen when low outliers are present.
+
 Returns Zpro,t,object_cells,is_object_point.
 '''
-
 def smrf(x,y,z,cellsize=1,windows=18,slope_threshold=.15,elevation_threshold=.5,
          elevation_scaler=1.25,low_filter_slope=5,low_outlier_fill=False):
-     """returns provisional_DTM, affine_matrix, object_cells,is_object_point"""
-
 
     if np.isscalar(windows):
         windows = np.arange(windows) + 1
