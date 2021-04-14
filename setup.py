@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='smrf',
-    version='0.01',
+    version='1.1.0',
     packages=['smrf',],
     license='MIT',
     long_description='SMRF is a binary lidar ground/object classifier.',

@@ -11,31 +11,42 @@ from scipy.sparse.linalg import lsqr
 from skimage.morphology import disk
 from skimage.morphology.grey import opening
 
-'''
-x,y,z are points in space (e.g., lidar points)
-windows is a scalar value specifying the maximum radius in pixels.  One can also 
-supply an array of specific radii to test.  Very often, increasing the radius by 
-one each time (as is the default) is unnecessary, especially for EDA.
-Final classification of points is done using elevation_threshold and elevation_scaler.
-points are compared against the provisional surface with a threshold modulated by the 
-scaler value.  However, often the provisional surface (itself interpolated) works
-quite well.  
-
-Two additional parameters are being test to assist in low outlier removal.
-low_filter_slope provides a slope value for an inverted surface.  Its default
-value is 5 (meaning 500% slope).  However, we have noticed that in very rugged 
-and forested terrain, that an even larger value may be necessary.  Alternatively,
-low noise can be scrubbed using other means, and then this value can be set to a very high 
-value to avoid its use entirely.  A second parameter (low_outlier_fill) will 
-remove the points from the provisional DTM, and then fill them in before the main
-body of the SMRF algorithm proceeds.  This should aid in preventing the "damage"
-to the DTM that can happen when low outliers are present.
-
-Returns Zpro,t,object_cells,is_object_point.
-'''
 def smrf(x,y,z,cellsize=1,windows=18,slope_threshold=.15,elevation_threshold=.5,
          elevation_scaler=1.25,low_filter_slope=5,low_outlier_fill=False):
-
+    """
+    Returns dtm, transform, object_grid, object_vector
+        
+    Parameters:
+    - x,y,z are points in space (e.g., lidar points)
+    - 'windows' is a scalar value specifying the maximum radius in pixels.  One can also 
+                supply an array of specific radii to test.  Very often, increasing the 
+                radius by one each time (as is the default) is unnecessary, especially 
+                for EDA.  This is the most sensitive parameter.  Use a small value 
+                (2-5 m) when removing small objects like trees.  Use a larger value (5-50)
+                to remove larger objects like buildings.  Use the smallest value you
+                can to avoid misclassifying true ground points as objects.  A
+                small radius (3 pixels) and evaluating output is generally a good starting
+                point.
+    - 'slope_threshold' is a dz/dx value that controls the ground/object classification.
+                A value of .15 to .2 is generally a good starting point.  Use a higher 
+                value in steeper terrain to avoid misclassifying true ground points as
+                objects.
+    - 'elevation_threshold' is a value that controls final classification of object/ground
+                and is specified in map units (e.g., meters or feet).  Any value within 
+                this distance of the provisional DTM is considered a ground point.  A 
+                value of .5 meters is generally a good starting point.
+    - 'elevation_scaler' - allows elevation_threshold to increase on steeper slopes.
+                The product of this and a slope surface are added to the elevation_threshold
+                for each grid cell.  Set this value to zero to not use this paramater.
+                A value of 1.25 is generally a good starting point.
+    - 'low_filter_slope' controls the identification of low outliers.  Since SMRF builds
+                its provisional DTM from the lowest point in a grid cell, low outliers can
+                greatly affect algorithm performance.  The default value of 5 (corresponding
+                to 500%) is a good starting point, but if your data has significant low outliers, 
+                use a significantly higher value (50, 500) to remove these.
+    - 'low_outlier_fill' removes and re-interpolates low outlier grid cells.  The default value
+                is false, as most of the time the standard removal process works fine.
+    """         
     if np.isscalar(windows):
         windows = np.arange(windows) + 1
     
@@ -256,3 +267,177 @@ def create_dem(x,y,z,cellsize=1,bin_type='max',use_binned_statistic=False,inpain
         I = inpaint_nans_by_springs(I)
     
     return I,t
+
+
+    
+# A pure python las reader
+def read_las(filename):
+
+    with open(filename,mode='rb') as file:
+        data = file.read()
+    
+    # This dictionary holds the byte length of the point data (see minimum
+    # PDRF Size given in LAS spec.)
+    point_data_format_key = {0:20,1:28,2:26,3:34,4:57,5:63,6:30,7:36,8:38,9:59,10:67}
+    
+    # Read header into a dictionary
+    header = {}
+    header['file_signature'] = struct.unpack('<4s',data[0:4])[0].decode('utf-8')
+    header['file_source_id'] = struct.unpack('<H',data[4:6])[0]
+    header['global_encoding'] = struct.unpack('<H',data[6:8])[0]
+    project_id = []
+    project_id.append(struct.unpack('<L',data[8:12])[0])
+    project_id.append(struct.unpack('<H',data[12:14])[0])
+    project_id.append(struct.unpack('<H',data[14:16])[0])
+    #Fix
+    #project_id.append(struct.unpack('8s',data[16:24])[0].decode('utf-8').rstrip('\x00'))
+    header['project_id'] = project_id
+    del project_id
+    header['version_major'] = struct.unpack('<B',data[24:25])[0]
+    header['version_minor'] = struct.unpack('<B',data[25:26])[0]
+    header['version'] = header['version_major'] + header['version_minor']/10
+    header['system_id'] = struct.unpack('32s',data[26:58])[0].decode('utf-8').rstrip('\x00')
+    header['generating_software'] = struct.unpack('32s',data[58:90])[0].decode('utf-8').rstrip('\x00')
+    header['file_creation_day'] = struct.unpack('H',data[90:92])[0]
+    header['file_creation_year'] = struct.unpack('<H',data[92:94])[0]
+    header['header_size'] = struct.unpack('H',data[94:96])[0]
+    header['point_data_offset'] = struct.unpack('<L',data[96:100])[0]
+    header['num_variable_records'] = struct.unpack('<L',data[100:104])[0]
+    header['point_data_format_id'] = struct.unpack('<B',data[104:105])[0]
+    #print(header['point_data_format_id'])
+    laz_format = False
+    if header['point_data_format_id'] >= 128 and header['point_data_format_id'] <= 133:
+        laz_format = True
+        # error here?
+        header['point_data_format_id'] =  header['point_data_format_id'] - 128
+    if laz_format:
+        raise ValueError('LAZ not yet supported.')
+    try:
+        format_length = point_data_format_key[header['point_data_format_id']]
+    except:
+        raise ValueError('Point Data Record Format',header['point_data_format_id'],'not yet supported.')
+    if header['point_data_format_id'] >= 6:
+        print('Point Data Formats 6-10 have recently been added to this reader.  Please check results carefully and report any suspected errors.')
+    header['point_data_record_length'] = struct.unpack('<H',data[105:107])[0]
+    header['num_point_records'] = struct.unpack('<L',data[107:111])[0]
+    header['num_points_by_return'] = struct.unpack('<5L',data[111:131])
+    header['scale'] = struct.unpack('<3d',data[131:155])
+    header['offset'] = struct.unpack('<3d',data[155:179])
+    header['minmax'] = struct.unpack('<6d',data[179:227]) #xmax,xmin,ymax,ymin,zmax,zmin
+    end_point_data = len(data)
+    
+    # For version 1.3, read in the location of the point data.  At this time
+    # no wave information will be read
+    header_length = 227
+    if header['version']==1.3:
+        header['begin_wave_form'] = struct.unpack('<q',data[227:235])[0]
+        header_length = 235
+        if header['begin_wave_form'] != 0:
+            end_point_data = header['begin_wave_form']
+
+    # Pare out only the point data
+    data = data[header['point_data_offset']:end_point_data]
+
+    if header['point_data_format_id']==0:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('class','u1'),('scan_angle','u1'),
+                       ('user_data','u1'),('point_source_id','u2')])
+    elif header['point_data_format_id']==1:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('class','u1'),('scan_angle','u1'),
+                       ('user_data','u1'),('point_source_id','u2'),('gpstime','f8')])
+    elif header['point_data_format_id']==2:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('class','u1'),('scan_angle','u1'),
+                       ('user_data','u1'),('point_source_id','u2'),('red','u2'),
+                       ('green','u2'),('blue','u2')])
+    elif header['point_data_format_id']==3:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('class','u1'),('scan_angle','u1'),
+                       ('user_data','u1'),('point_source_id','u2'),('gpstime','f8'),
+                       ('red','u2'),('green','u2'),('blue','u2')])
+    elif header['point_data_format_id']==4:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('class','u1'),('scan_angle','u1'),
+                       ('user_data','u1'),('point_source_id','u2'),('gpstime','f8'),
+                       ('wave_packet_descriptor_index','u1'),('byte_offset','u8'),
+                       ('wave_packet_size','u4'),('return_point_waveform_location','f4'),
+                       ('xt','f4'),('yt','f4'),('zt','f4')])
+    elif header['point_data_format_id']==5:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('class','u1'),('scan_angle','u1'),
+                       ('user_data','u1'),('point_source_id','u2'),('gpstime','f8'),
+                       ('red','u2'),('green','u2'),('blue','u2'),
+                       ('wave_packet_descriptor_index','u1'),('byte_offset','u8'),
+                       ('wave_packet_size','u4'),('return_point_waveform_location','f4'),
+                       ('xt','f4'),('yt','f4'),('zt','f4')])
+    elif header['point_data_format_id']==6:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('mixed_byte','u1'),('class','u1'),
+                       ('user_data','u1'),('scan_angle','u2'),('point_source_id','u2'),
+                       ('gpstime','f8')])
+    elif header['point_data_format_id']==7:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('mixed_byte','u1'),('class','u1'),
+                       ('user_data','u1'),('scan_angle','u2'),('point_source_id','u2'),
+                       ('gpstime','f8'),('red','u2'),('green','u2'),('blue','u2')])        
+    elif header['point_data_format_id']==8:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('mixed_byte','u1'),('class','u1'),
+                       ('user_data','u1'),('scan_angle','u2'),('point_source_id','u2'),
+                       ('gpstime','f8'),('red','u2'),('green','u2'),('blue','u2'),
+                       ('near_infrared','u2')])    
+    elif header['point_data_format_id']==9:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('mixed_byte','u1'),('class','u1'),
+                       ('user_data','u1'),('scan_angle','u2'),('point_source_id','u2'),
+                       ('gpstime','f8'),('wave_packet_descriptor_index','u1'),
+                       ('byte_offset','u8'),('wave_packet_size','u4'),
+                       ('return_point_waveform_location','f4'),
+                       ('xt','f4'),('yt','f4'),('zt','f4')])
+    elif header['point_data_format_id']==10:
+        dt = np.dtype([('x', 'i4'), ('y', 'i4'), ('z', 'i4'), ('intensity', 'u2'),
+                       ('return_byte','u1'),('mixed_byte','u1'),('class','u1'),
+                       ('user_data','u1'),('scan_angle','u2'),('point_source_id','u2'),
+                       ('gpstime','f8'),('red','u2'),('green','u2'),('blue','u2'),
+                       ('near_infrared','u2'),('wave_packet_descriptor_index','u1'),
+                       ('byte_offset','u8'),('wave_packet_size','u4'),
+                       ('return_point_waveform_location','f4'),
+                       ('xt','f4'),('yt','f4'),('zt','f4')])         
+        
+        
+    # Transform to Pandas dataframe, via a numpy array
+    data = pd.DataFrame(np.frombuffer(data,dt))
+    data['x'] = data['x']*header['scale'][0] + header['offset'][0]
+    data['y'] = data['y']*header['scale'][1] + header['offset'][1]
+    data['z'] = data['z']*header['scale'][2] + header['offset'][2]
+
+    def get_bit(byteval,idx):
+        return ((byteval&(1<<idx))!=0);
+
+    # Recast the mixed bytes as specified in the LAS specification
+    if header['point_data_format_id'] < 6:
+        data['return_number'] = 4 * get_bit(data['return_byte'],2).astype(np.uint8) + 2 * get_bit(data['return_byte'],1).astype(np.uint8) + get_bit(data['return_byte'],0).astype(np.uint8)
+        data['return_max'] = 4 * get_bit(data['return_byte'],5).astype(np.uint8) + 2 * get_bit(data['return_byte'],4).astype(np.uint8) + get_bit(data['return_byte'],3).astype(np.uint8)
+        data['scan_direction'] = get_bit(data['return_byte'],6)
+        data['edge_of_flight_line'] = get_bit(data['return_byte'],7)
+        del data['return_byte']
+    else:
+        data['return_number'] = 8 * get_bit(data['return_byte'],3).astype(np.uint8) + 4 * get_bit(data['return_byte'],2).astype(np.uint8) + 2 * get_bit(data['return_byte'],1).astype(np.uint8) + get_bit(data['return_byte'],0).astype(np.uint8)
+        data['return_max'] = 8 * get_bit(data['return_byte'],7).astype(np.uint8) + 4 * get_bit(data['return_byte'],6).astype(np.uint8) + 2 * get_bit(data['return_byte'],5).astype(np.uint8) + get_bit(data['return_byte'],4).astype(np.uint8)
+        # data['scan_direction'] = get_bit(data['return_byte'],6)
+        # data['edge_of_flight_line'] = get_bit(data['return_byte'],7)
+        del data['return_byte']        
+    if header['point_data_format_id'] >= 6:
+        data['classification_bit_synthetic'] = get_bit(data['mixed_byte'],0)
+        data['classification_bit_keypoint'] = get_bit(data['mixed_byte'],1)
+        data['classification_bit_withheld'] = get_bit(data['mixed_byte'],2)
+        data['classification_bit_overlap'] = get_bit(data['mixed_byte'],3)
+        data['scanner_channel'] = 2 * get_bit(data['mixed_byte'],5).astype(np.uint8) + 1 * get_bit(data['mixed_byte'],4).astype(np.uint8)
+        data['scan_direction'] = get_bit(data['mixed_byte'],6)
+        data['edge_of_flight_line'] = get_bit(data['mixed_byte'],7)
+        del data['mixed_byte']
+    
+
+    
+    return header,data
