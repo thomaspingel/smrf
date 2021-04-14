@@ -12,6 +12,7 @@ build/
 develop-eggs/
 dist/
 downloads/
+smrf/examples/data/
 eggs/
 .eggs/
 lib/
