@@ -14,8 +14,12 @@ from skimage.morphology.grey import opening
 def smrf(x,y,z,cellsize=1,windows=18,slope_threshold=.15,elevation_threshold=.5,
          elevation_scaler=1.25,low_filter_slope=5,low_outlier_fill=False):
     """
-    Returns dtm, transform, object_grid, object_vector
-        
+    Simple Example:
+    
+    import smrf
+    
+    dtm, T, obj_grid, obj_vector = smrf.smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15)
+    
     Parameters:
     - x,y,z are points in space (e.g., lidar points)
     - 'windows' is a scalar value specifying the maximum radius in pixels.  One can also 
@@ -30,7 +34,7 @@ def smrf(x,y,z,cellsize=1,windows=18,slope_threshold=.15,elevation_threshold=.5,
     - 'slope_threshold' is a dz/dx value that controls the ground/object classification.
                 A value of .15 to .2 is generally a good starting point.  Use a higher 
                 value in steeper terrain to avoid misclassifying true ground points as
-                objects.
+                objects.  Note, .15 equals a 15 percent (not degree!) slope.
     - 'elevation_threshold' is a value that controls final classification of object/ground
                 and is specified in map units (e.g., meters or feet).  Any value within 
                 this distance of the provisional DTM is considered a ground point.  A 
@@ -46,6 +50,17 @@ def smrf(x,y,z,cellsize=1,windows=18,slope_threshold=.15,elevation_threshold=.5,
                 use a significantly higher value (50, 500) to remove these.
     - 'low_outlier_fill' removes and re-interpolates low outlier grid cells.  The default value
                 is false, as most of the time the standard removal process works fine.
+                
+                
+    Returns: dtm, transform, object_grid, object_vector
+        
+    - 'dtm' is a provisional ground surface created after processing.
+    - 'T' is a rasterio Affine transformation vector for writing out the DTM using rasterio
+    - 'obj_grid' is a boolean grid of the same size as DTM where 0s mark ground and 1s mark objects.
+    - 'obj_vector' is a boolean vector/1D-array of the same size as x,y, and z, where 0s mark 
+                ground and 1s mark objects.
+
+                
     """         
     if np.isscalar(windows):
         windows = np.arange(windows) + 1
