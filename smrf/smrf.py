@@ -29,7 +29,7 @@ def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
                 (2-5 m) when removing small objects like trees.  Use a larger value (5-50)
                 to remove larger objects like buildings.  Use the smallest value you
                 can to avoid misclassifying true ground points as objects.  A
-                small radius (3 pixels) and evaluating output is generally a good starting
+                small radius (5 pixels) and evaluating output is generally a good starting
                 point.
     - 'slope_threshold' is a dz/dx value that controls the ground/object classification.
                 A value of .15 to .2 is generally a good starting point.  Use a higher 
