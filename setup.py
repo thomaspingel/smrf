@@ -1,29 +1,29 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.0.1' 
-DESCRIPTION = 'The Simple Morphological Filter (SMRF)'
-LONG_DESCRIPTION = 'SMRF is a binary lidar ground/object classifier. https://doi.org/10.1016/j.isprsjprs.2012.12.002'
-
-# Setting up
 setup(
-       # the name must match the folder name 'verysimplemodule'
-        name="smrf", 
-        version=VERSION,
-        author="Thomas Pingel",
-        author_email="thomas.pingel@gmail.com",
-        description=DESCRIPTION,
-        long_description=LONG_DESCRIPTION,
-        packages=find_packages(),
-        install_requires=[], # add any additional packages that 
-        # needs to be installed along with your package. Eg: 'caer'
-        
-        keywords=['python', 'first package'],
-        classifiers= [
-            "Development Status :: 3 - Alpha",
-            "Intended Audience :: Education",
-            "Programming Language :: Python :: 2",
-            "Programming Language :: Python :: 3",
-            "Operating System :: MacOS :: MacOS X",
-            "Operating System :: Microsoft :: Windows",
-        ]
-)
+    name='smrf',
+    version='0.01',
+    packages=['smrf',],
+    license='MIT',
+    long_description='SMRF is a binary lidar ground/object classifier.',
+    url='https://doi.org/10.1016/j.isprsjprs.2012.12.002',
+
+    author='Thomas Pingel',
+    author_email='thomas.pingel@gmail.com',
+
+    classifiers=['Development Status :: 4 - Beta',
+                 'Programming Language :: Python :: 3',
+                 'Programming Language :: Python :: 3.4',
+                 'Programming Language :: Python :: 3.5',
+                 'Programming Language :: Python :: 3.6',
+                 'Programming Language :: Python :: 3.7',
+                 'Programming Language :: Python :: 3.8',
+                 'Topic :: Scientific/Engineering',
+                 'Topic :: Scientific/Engineering :: Geographic Information Science',
+                 'Intended Audience :: Science/Research',
+                 'Operating System :: OS Independent',
+                 'License :: OSI Approved :: MIT License'],
+    keywords='GIS lidar',
+	install_requires=['scipy','pandas','rasterio','numpy'],
+
+	)

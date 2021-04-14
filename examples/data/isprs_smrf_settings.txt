@@ -1,0 +1,16 @@
+filename,slope_threshold,windows,elevation_threshold,elevation_scaler
+samp11.txt,.2,16,.45,1.2
+samp12.txt,.18,12,.30,.95
+samp21.txt,.12,20,.6,0
+samp22.txt,.16,18,.35,1.3
+samp23.txt,.27,13,.5,.9
+samp24.txt,.16,8,.2,2.05
+samp31.txt,.08,15,.25,1.5
+samp41.txt,.22,16,1.1,0
+samp42.txt,.06,49,1.05,0
+samp51.txt,.05,17,.35,.9
+samp52.txt,.13,13,.25,2.2
+samp53.txt,.45,3,.1,3.8
+samp54.txt,.05,11,.15,2.3
+samp61.txt,.28,5,.5,1.45
+samp71.txt,.13,15,.75,0
