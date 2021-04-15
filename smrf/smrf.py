@@ -6,6 +6,8 @@ from pandas import DataFrame
 from scipy import sparse, interpolate
 from scipy.sparse.linalg import lsqr
 
+import struct
+
 # from scipy.ndimage.morphology import grey_opening
 
 from skimage.morphology import disk
@@ -284,10 +286,18 @@ def create_dem(x,y,z,cellsize=1,bin_type='max',use_binned_statistic=False,inpain
     return I,t
 
 
-    
-# A pure python las reader
 def read_las(filename):
-
+    """
+    An LAS lidar file reader that outputs the point cloud into a Pandas 
+    DataFrame.  It is written in pure Python, and relies only on common 
+    scientific packages such as Numpy and Pandas.
+    
+    It does not yet work for LAZ or zLAS files.
+    
+    Simple Example:
+    header, df = smrf.read_las('file.las')
+                
+    """    
     with open(filename,mode='rb') as file:
         data = file.read()
     
