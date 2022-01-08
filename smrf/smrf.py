@@ -14,7 +14,7 @@ from skimage.morphology import disk
 from skimage.morphology.grey import opening
 
 def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
-         elevation_scaler=1.25,low_filter_slope=5,low_outlier_fill=False):
+         elevation_scaler=1.25,low_filter_slope=5,low_outlier_fill=False,return_AGH=False):
     """
     Simple Example:
     
@@ -114,9 +114,12 @@ def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
     required_value = elevation_threshold + (elevation_scaler * slope_values)
     is_object_point = np.abs(elevation_values - z) > required_value
     
-    # Return the provisional surface, affine matrix, raster object cells
-    # and boolean vector identifying object points from point cloud
-    return Zpro,t,object_cells,is_object_point
+    if return_AGH==False:  
+        # Return the provisional surface, affine matrix, raster object cells
+        # and boolean vector identifying object points from point cloud
+        return Zpro,t,object_cells,is_object_point
+    else:
+        return Zpro,t,object_cells,is_object_point,elevation_values
     
 
 def progressive_filter(Z,windows,cellsize=1,slope_threshold=.15):
