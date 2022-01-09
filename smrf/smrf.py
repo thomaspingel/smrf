@@ -119,7 +119,7 @@ def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
         # and boolean vector identifying object points from point cloud
         return Zpro,t,object_cells,is_object_point
     else:
-        return Zpro,t,object_cells,is_object_point,elevation_values
+        return Zpro,t,object_cells,is_object_point,z-elevation_values
     
 
 def progressive_filter(Z,windows,cellsize=1,slope_threshold=.15):
