@@ -244,16 +244,49 @@ def inpaint_nans_by_fda(A,fast=True):
         B[np.unravel_index(nan_list,(m,n))] = results
     return B
         
-def create_dem(x,y,z,cellsize=1,bin_type='max',use_binned_statistic=False,inpaint=False):
+# Given an image and accompanying affine transform, return the x_edges and
+# y_edges for the image.  This is useful when passing specific edges to 
+# the create_dem function.
+
+def edges_from_IT(Image,Transform):
+    r,c = np.shape(Image)[0],np.shape(Image)[1]
+    x_edges = np.arange(c+1)
+    y_edges = np.arange(r+1)
+    x_edges, _ = Transform * np.array(list(zip(x_edges,np.zeros_like(x_edges)))).T
+    _, y_edges = Transform * np.array(list(zip(np.zeros_like(y_edges),y_edges))).T
     
+    return x_edges, y_edges
+
+
+#%%
+# Using scipy's binned statistic would be preferable here, but it doesn't do
+# min/max natively, and is too slow when not cython.
+# It would look like: 
+# Z,xi,yi,binnum = stats.binned_statistic_2d(x,y,z,statistic='min',bins=(x_edge,y_edge))
+def create_dem(x,y,z,cellsize=1,bin_type='max',inpaint=False,edges=None,use_binned_statistic=False):
+    
+    #x = df.x.values
+    #y = df.y.values
+    #z = df.z.values
+    #resolution = 1
+    #bin_type = 'max' 
     floor2 = lambda x,v: v*np.floor(x/v)
     ceil2 = lambda x,v: v*np.ceil(x/v)
     
-    
-    xedges = np.arange(floor2(np.min(x),cellsize)-.5*cellsize,
-                       ceil2(np.max(x),cellsize) + 1.5*cellsize,cellsize)
-    yedges = np.arange(ceil2(np.max(y),cellsize)+.5*cellsize,
-                       floor2(np.min(y),cellsize) - 1.5*cellsize,-cellsize)
+    if edges is None:
+        xedges = np.arange(floor2(np.min(x),cellsize)-.5*cellsize,
+                           ceil2(np.max(x),cellsize) + 1.5*cellsize,cellsize)
+        yedges = np.arange(ceil2(np.max(y),cellsize)+.5*cellsize,
+                           floor2(np.min(y),cellsize) - 1.5*cellsize,-cellsize)
+    else:
+        xedges = edges[0]
+        yedges = edges[1]
+        out_of_range = (x < xedges[0]) | (x > xedges[-1]) | (y > yedges[0]) | (y < yedges[-1])
+        x = x[~out_of_range]
+        y = y[~out_of_range]
+        z = z[~out_of_range]
+        cellsize = np.abs(xedges[1]-xedges[0])
+        
     nx, ny = len(xedges)-1,len(yedges)-1
     
     I = np.empty(nx*ny)
@@ -261,7 +294,7 @@ def create_dem(x,y,z,cellsize=1,bin_type='max',use_binned_statistic=False,inpain
     
     # Define an affine matrix, and convert realspace coordinates to integer pixel
     # coordinates
-    t = from_origin(xedges[0], yedges[0], cellsize, cellsize)
+    t = rasterio.transform.from_origin(xedges[0], yedges[0], cellsize, cellsize)
     c,r = ~t * (x,y)
     c,r = np.floor(c).astype(np.int64), np.floor(r).astype(np.int64)
     
@@ -271,7 +304,7 @@ def create_dem(x,y,z,cellsize=1,bin_type='max',use_binned_statistic=False,inpain
     if use_binned_statistic:
         I = stats.binned_statistic_2d(x,y,z,statistic='min',bins=(xedges,yedges))
     else:        
-        mx = DataFrame({'i':np.ravel_multi_index((r,c),(ny,nx)),'z':z}).groupby('i')
+        mx = pd.DataFrame({'i':np.ravel_multi_index((r,c),(ny,nx)),'z':z}).groupby('i')
         del c,r
         if bin_type=='max':
             mx = mx.max()
