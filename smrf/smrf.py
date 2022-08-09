@@ -2,6 +2,7 @@ import numpy as np
 
 from rasterio.transform import from_origin
 import rasterio
+import pandas as pd
 from pandas import DataFrame
 
 from scipy import sparse, interpolate
