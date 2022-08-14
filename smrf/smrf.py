@@ -1,7 +1,7 @@
 import numpy as np
 
 from rasterio.transform import from_origin
-from pandas import DataFrame
+import pandas as pd
 
 from scipy import sparse, interpolate
 from scipy.sparse.linalg import lsqr
@@ -327,7 +327,7 @@ def create_dem(x,y,z,cellsize=1,bin_type='max',inpaint=False,edges=None,use_binn
     if use_binned_statistic:
         I = stats.binned_statistic_2d(x,y,z,statistic='min',bins=(xedges,yedges))
     else:        
-        mx = DataFrame({'i':np.ravel_multi_index((r,c),(ny,nx)),'z':z}).groupby('i')
+        mx = pd.DataFrame({'i':np.ravel_multi_index((r,c),(ny,nx)),'z':z}).groupby('i')
         del c,r
         if bin_type=='max':
             mx = mx.max()

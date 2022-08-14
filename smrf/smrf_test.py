@@ -21,9 +21,10 @@ Zpro,t,object_cells,is_object_point,extras = smrf(x,y,z,return_extras=True)
 import smrf
 
 x,y,z = 10 * np.random.rand(3,100)
-Zpro,t,object_cells,is_object_point = smrf.smrf(x,y,z)
+Zpro,t,object_cells,is_object_point,extras = smrf.smrf(x,y,z,return_extras=True)
 
 
 #%%
 
 
+header, las = smrf.read_las('../../smrf_data/DK22_partial.las')
