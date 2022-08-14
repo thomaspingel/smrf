@@ -1,8 +1,6 @@
 import numpy as np
 
 from rasterio.transform import from_origin
-import rasterio
-import pandas as pd
 from pandas import DataFrame
 
 from scipy import sparse, interpolate
@@ -13,10 +11,12 @@ import struct
 # from scipy.ndimage.morphology import grey_opening
 
 from skimage.morphology import disk
-from skimage.morphology.grey import opening
+#from skimage.morphology.grey import opening
+from skimage.morphology import opening
 
 def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
-         elevation_scaler=1.25,low_filter_slope=5,low_outlier_fill=False,return_AGH=False):
+         elevation_scaler=1.25,low_filter_slope=5,low_outlier_fill=False,
+         return_extras=False):
     """
     Simple Example:
     
@@ -80,7 +80,10 @@ def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
         Zmin = inpaint_nans_by_springs(Zmin)
     
     # This is the main crux of the algorithm
-    object_cells = progressive_filter(Zmin,windows,cellsize,slope_threshold);
+    if return_extras:
+        object_cells,drop_raster = progressive_filter(Zmin,windows,cellsize,slope_threshold,return_when_dropped=True)
+    else:
+        object_cells = progressive_filter(Zmin,windows,cellsize,slope_threshold)
     
     # Create a provisional surface
     Zpro = Zmin
@@ -101,6 +104,11 @@ def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
     f1 = interpolate.RectBivariateSpline(row_centers,col_centers,Zpro)
     elevation_values = f1.ev(r,c)
     
+    # Drop values, if requested
+    if return_extras:
+        f3 = interpolate.RectBivariateSpline(row_centers,col_centers,drop_raster)
+        when_dropped = f3.ev(r,c)
+    
     # Calculate a slope value for each point.  This is used to apply a some "slop"
     # to the ground/object ID, since there is more uncertainty on slopes than on
     # flat areas.
@@ -116,18 +124,26 @@ def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
     required_value = elevation_threshold + (elevation_scaler * slope_values)
     is_object_point = np.abs(elevation_values - z) > required_value
     
-    if return_AGH==False:  
+    if return_extras==True:
+        extras={}
+        extras['above_ground_height'] = z-elevation_values
+        extras['drop_raster'] = drop_raster
+        extras['when_dropped'] = when_dropped # as a point
+    
+    if return_extras==False:  
         # Return the provisional surface, affine matrix, raster object cells
         # and boolean vector identifying object points from point cloud
         return Zpro,t,object_cells,is_object_point
     else:
-        return Zpro,t,object_cells,is_object_point,z-elevation_values
+        return Zpro,t,object_cells,is_object_point,extras
     
 
-def progressive_filter(Z,windows,cellsize=1,slope_threshold=.15):
+def progressive_filter(Z,windows,cellsize=1,slope_threshold=.15,return_when_dropped=False):
     last_surface = Z.copy()
     elevation_thresholds = slope_threshold * (windows * cellsize)  
-    is_object_cell = np.zeros(np.shape(Z),dtype=np.bool)
+    is_object_cell = np.zeros(np.shape(Z),dtype=bool)
+    if return_when_dropped:
+        when_dropped = np.zeros(np.shape(Z),dtype=np.uint8)
     for i,window in enumerate(windows):
         elevation_threshold = elevation_thresholds[i]
         this_disk = disk(window)
@@ -135,9 +151,14 @@ def progressive_filter(Z,windows,cellsize=1,slope_threshold=.15):
             this_disk = np.ones((3,3),dtype=np.uint8)
         this_surface = opening(last_surface,disk(window)) 
         is_object_cell = (is_object_cell) | (last_surface - this_surface > elevation_threshold)
+        if return_when_dropped:
+            when_dropped = when_dropped + is_object_cell
         if i < len(windows) and len(windows)>1:
             last_surface = this_surface.copy()
-    return is_object_cell
+    if return_when_dropped:
+        return is_object_cell,when_dropped
+    else:
+        return is_object_cell
 
     
 def unique_rows(a):
@@ -296,7 +317,7 @@ def create_dem(x,y,z,cellsize=1,bin_type='max',inpaint=False,edges=None,use_binn
     
     # Define an affine matrix, and convert realspace coordinates to integer pixel
     # coordinates
-    t = rasterio.transform.from_origin(xedges[0], yedges[0], cellsize, cellsize)
+    t = from_origin(xedges[0], yedges[0], cellsize, cellsize)
     c,r = ~t * (x,y)
     c,r = np.floor(c).astype(np.int64), np.floor(r).astype(np.int64)
     
@@ -306,7 +327,7 @@ def create_dem(x,y,z,cellsize=1,bin_type='max',inpaint=False,edges=None,use_binn
     if use_binned_statistic:
         I = stats.binned_statistic_2d(x,y,z,statistic='min',bins=(xedges,yedges))
     else:        
-        mx = pd.DataFrame({'i':np.ravel_multi_index((r,c),(ny,nx)),'z':z}).groupby('i')
+        mx = DataFrame({'i':np.ravel_multi_index((r,c),(ny,nx)),'z':z}).groupby('i')
         del c,r
         if bin_type=='max':
             mx = mx.max()
