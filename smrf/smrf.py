@@ -106,8 +106,9 @@ def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
     
     # Drop values, if requested
     if return_extras:
-        f3 = interpolate.RectBivariateSpline(row_centers,col_centers,drop_raster)
-        when_dropped = f3.ev(r,c)
+        #f3 = interpolate.NearestNDInterpolator((row_centers,col_centers),drop_raster)
+        #when_dropped = f3(r,c)
+        when_dropped = drop_raster[np.round(r).astype(int),np.round(c).astype(int)]
     
     # Calculate a slope value for each point.  This is used to apply a some "slop"
     # to the ground/object ID, since there is more uncertainty on slopes than on
@@ -150,9 +151,10 @@ def progressive_filter(Z,windows,cellsize=1,slope_threshold=.15,return_when_drop
         if window==1:
             this_disk = np.ones((3,3),dtype=np.uint8)
         this_surface = opening(last_surface,disk(window)) 
-        is_object_cell = (is_object_cell) | (last_surface - this_surface > elevation_threshold)
+        new_obj = last_surface - this_surface > elevation_threshold
+        is_object_cell = (is_object_cell) | (new_obj)
         if return_when_dropped:
-            when_dropped = when_dropped + is_object_cell
+            when_dropped[new_obj] = i
         if i < len(windows) and len(windows)>1:
             last_surface = this_surface.copy()
     if return_when_dropped:
