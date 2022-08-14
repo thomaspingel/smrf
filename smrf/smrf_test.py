@@ -53,7 +53,7 @@ arr = pipeline.arrays[0]
 Zpro,t,object_cells,is_object_point,extras = smrf.smrf(arr['X'],arr['Y'],arr['Z'],cellsize=1,windows=5,return_extras=True)
 
 
-df = pd.DataFrame({'x':arr['X'],'y':arr['Y'],'z':arr['Z'],'ground':2*(1-is_object_point),'dropped':np.round(extras['when_dropped'],decimals=1)})
+df = pd.DataFrame({'x':arr['X'],'y':arr['Y'],'z':arr['Z'],'ground':2*(1-is_object_point),'dropped':extras['when_dropped']})
 
 df.to_csv('test.csv',index=False)
 
