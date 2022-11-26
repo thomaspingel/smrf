@@ -8,11 +8,10 @@ from scipy.sparse.linalg import lsqr
 
 import struct
 
-# from scipy.ndimage.morphology import grey_opening
-
 from skimage.morphology import disk
-#from skimage.morphology.grey import opening
 from skimage.morphology import opening
+
+import matplotlib.pyplot as plt
 
 def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
          elevation_scaler=1.25,low_filter_slope=5,low_outlier_fill=False,
@@ -527,3 +526,29 @@ def read_las(filename):
 
     
     return header,data
+
+
+#%%
+
+def pssm(Z,cellsize=1,ve=2.3,reverse=False,apply_colormap=True):
+
+    # Calculate Slope
+    gy,gx = np.gradient(Z,cellsize)
+    S = np.sqrt(gx**2 + gy**2)
+    del gy,gx
+
+    # Apply vertical exaggeration, convert to degrees, divide by 90
+    P = np.rad2deg(np.arctan(ve *  S)) / 90
+    del S
+    
+    # Convert to integer scaled 0-255
+    P = np.round(255*P).astype(np.uint8)
+    
+    if apply_colormap:
+        if reverse==False:
+            P = plt.cm.bone_r(P)
+        else:
+            P = plt.cm.bone(P)
+        return P
+    else:
+        return P
