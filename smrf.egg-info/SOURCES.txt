@@ -1,0 +1,12 @@
+LICENSE
+README.md
+setup.cfg
+setup.py
+smrf/__init__.py
+smrf/smrf.py
+smrf/smrf_test.py
+smrf.egg-info/PKG-INFO
+smrf.egg-info/SOURCES.txt
+smrf.egg-info/dependency_links.txt
+smrf.egg-info/requires.txt
+smrf.egg-info/top_level.txt

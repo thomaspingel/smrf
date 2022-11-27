@@ -53,7 +53,6 @@ def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
                 use a significantly higher value (50, 500) to remove these.
     - 'low_outlier_fill' removes and re-interpolates low outlier grid cells.  The default value
                 is false, as most of the time the standard removal process works fine.
-    - 'return_extras' allows the return of a dictionary of extra vectors about your data
                 
                 
     Returns: dtm, transform, object_grid, object_vector
@@ -63,9 +62,9 @@ def smrf(x,y,z,cellsize=1,windows=5,slope_threshold=.15,elevation_threshold=.5,
     - 'obj_grid' is a boolean grid of the same size as DTM where 0s mark ground and 1s mark objects.
     - 'obj_vector' is a boolean vector/1D-array of the same size as x,y, and z, where 0s mark 
                 ground and 1s mark objects.
-    - 'extras' is a dictionary that contains above_ground_height, drop_raster, and when_dropped
+
                 
-    """            
+    """         
     if np.isscalar(windows):
         windows = np.arange(windows) + 1
     

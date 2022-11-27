@@ -1,5 +1,7 @@
 examples/.ipynb_checkpoints
 examples/data/USGS_LPC_VA_FEMA-NRCS_SouthCentral_2017_D17_17SNB23501450.laz
 examples/data/USGS_LPC_VA_FEMA-NRCS_SouthCentral_2017_D17_17SNB23501450.las
+examples/data/StREAM_20170405.laz
 examples/out
+examples/old
 .gitignore.bak
