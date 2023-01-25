@@ -1,6 +1,6 @@
 # Simple Install
 ~~~
-pip install https://github.com/thomaspingel/smrf/archive/refs/heads/main.zip
+pip install pip install https://github.com/thomaspingel/smrf/zipball/master --no-cache-dir
 ~~~
 
 # Full Lidar processing environment
